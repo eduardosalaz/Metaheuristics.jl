@@ -168,7 +168,25 @@ end
 
 
 function update_convergence!(convergence, status)
-    push!(convergence, deepcopy(status))
+    # Create a lightweight convergence snapshot instead of deep copying entire state
+    # This avoids copying the population and prevents recursive convergence copying
+    # The convergence() function only needs f_calls and best_sol.f, so we only copy those
+    snapshot = State(
+        deepcopy(status.best_sol),  # Copy best solution
+        empty(status.population),   # Don't copy population (not needed for convergence tracking)
+        f_calls = status.f_calls,
+        g_calls = status.g_calls,
+        h_calls = status.h_calls,
+        iteration = status.iteration,
+        success_rate = status.success_rate,
+        convergence = State[],      # Don't copy convergence recursively (prevents exponential memory)
+        start_time = status.start_time,
+        final_time = status.final_time,
+        stop = status.stop
+    )
+    snapshot.overall_time = status.overall_time
+    snapshot.termination_status_code = status.termination_status_code
+    push!(convergence, snapshot)
 end
 
 
