@@ -15,18 +15,18 @@ function local_search(x, neighbourhood::InternalNeighborhood, ::BestImproveSearc
     for xnew in neighbourhood
         sol = create_solution(xnew, problem)
         if is_better(sol, best)
-            best = deepcopy(sol)
+            best = sol  # No deepcopy needed - sol is already a new object
         end
     end
     best
 end
 
 function local_search(x, neighbourhood::InternalNeighborhood, ::FirstImproveSearch, problem)
-    initial = create_solution(copy(x), problem) 
+    initial = create_solution(copy(x), problem)
     for xnew in neighbourhood
         sol = create_solution(xnew, problem)
         if is_better(sol, initial)
-            return deepcopy(sol)
+            return sol  # No deepcopy needed - sol is already a new object
         end
     end
     initial
