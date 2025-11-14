@@ -48,27 +48,33 @@ Constructor procedure for GRASP.
 See also [`GreedyRandomizedConstructor`](@ref), [`compute_cost`](@ref) and [`GRASP`](@ref)
 """
 function construct(constructor::GreedyRandomizedConstructor)
-    candidates = constructor.candidates |> copy
+    # Use index array instead of copying entire candidates array
+    # This avoids O(n) memory allocation and improves cache locality
+    remaining_indices = collect(eachindex(constructor.candidates))
+    candidates = constructor.candidates
     α = constructor.α
     # create empty solution S
-    S = empty(candidates)
+    S = similar(candidates, 0)
     # construct solution
-    while !isempty(candidates)
-        cost = compute_cost(candidates, constructor, constructor.instance)
+    while !isempty(remaining_indices)
+        # View only the remaining candidates
+        available = @view candidates[remaining_indices]
+        cost = compute_cost(available, constructor, constructor.instance)
         cmin = minimum(cost)
         cmax = maximum(cost)
-        # compute restricted candidate list
-        RCL = [i for i in eachindex(candidates) if cost[i] <= cmin + α*(cmax - cmin) ]
+        # compute restricted candidate list (indices into available, not original candidates)
+        RCL = [i for i in eachindex(cost) if cost[i] <= cmin + α*(cmax - cmin) ]
         if isempty(RCL)
             @error "RCL is empty. Try increasing α or check your `compute_cost` method."
             return
         end
-        
+
         # select candidate at random and insert into solution
-        s = rand(constructor.rng, RCL)
-        push!(S, candidates[s])
-        # update list of candidates
-        deleteat!(candidates, s)
+        rcl_idx = rand(constructor.rng, RCL)
+        original_idx = remaining_indices[rcl_idx]
+        push!(S, candidates[original_idx])
+        # update list of remaining indices (much cheaper than deleteat! on full candidates)
+        deleteat!(remaining_indices, rcl_idx)
     end
     S
 end
